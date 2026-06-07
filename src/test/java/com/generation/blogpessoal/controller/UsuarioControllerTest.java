@@ -6,11 +6,11 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
-import org.junit.jupiter.api.MethodOrderer;
-import org.junit.jupiter.api.DisplayName;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
@@ -20,6 +20,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import com.generation.blogpessoal.model.Usuario;
+import com.generation.blogpessoal.model.UsuarioLogin;
 import com.generation.blogpessoal.repository.UsuarioRepository;
 import com.generation.blogpessoal.service.UsuarioService;
 import com.generation.blogpessoal.util.JwtHelper;
@@ -124,6 +125,49 @@ class UsuarioControllerTest {
 		// Then
 		assertEquals(HttpStatus.OK, resposta.getStatusCode());
 		assertNotNull(resposta.getBody());
+	}
+	
+	@Test
+	@DisplayName("✔ 05 - Deve listar um usuário específico pelo id")
+	void deveListarUmUsuarioEspecifico() {
+		
+		// Given 
+		Usuario usuario = TestBuilder.criarUsuario(null, "João Teste", "joao_teste@email.com.br", "12345678");
+		Optional<Usuario> usuarioCadastrado = usuarioService.cadastrarUsuario(usuario);
+		Long idBusca = usuarioCadastrado.get().getId();
+		
+		// When 
+		String token = JwtHelper.obterToken(testRestTemplate, ADMIN, SENHA);
+		HttpEntity<Void> requisicao = JwtHelper.criarRequisicaoComToken(token);
+		ResponseEntity<Usuario> resposta = testRestTemplate.exchange(
+				BASE_URL + "/" + idBusca, HttpMethod.GET, requisicao, Usuario.class);
+		
+		// Then 
+		assertEquals(HttpStatus.OK, resposta.getStatusCode());
+		assertNotNull(resposta.getBody());
+		assertEquals(idBusca, resposta.getBody().getId()); 
+	}
+
+	@Test
+	@DisplayName("✔ 06 - Deve autenticar um usuário com sucesso")
+	void deveAutenticarUsuario() {
+		
+		// Given 
+		usuarioService.cadastrarUsuario(TestBuilder.criarUsuario(null, "Fernanda Costa", "fernanda_costa@email.com.br", "12345678"));
+		
+		UsuarioLogin login = new UsuarioLogin();
+		login.setUsuario("fernanda_costa@email.com.br");
+		login.setSenha("12345678");
+		
+		// When 
+		HttpEntity<UsuarioLogin> requisicao = new HttpEntity<>(login);
+		ResponseEntity<UsuarioLogin> resposta = testRestTemplate.exchange(
+				BASE_URL + "/logar", HttpMethod.POST, requisicao, UsuarioLogin.class);
+		
+		// Then 
+		assertEquals(HttpStatus.OK, resposta.getStatusCode());
+		assertNotNull(resposta.getBody());
+		assertNotNull(resposta.getBody().getToken()); 
 	}
 
 }
